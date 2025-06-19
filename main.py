@@ -35,7 +35,7 @@ async def generate(req: Request):
     for i, line in enumerate(lines):
         start, end = map(int, line.split(","))
         subprocess.run([
-            "ffmpeg", "-y", "-i", "video.mp4", "-ss", str(start), "-t", str(end-start),
+            "ffmpeg", "-y", "-i", "video.mp4", "-ss", str(start), "-t", str(end - start),
             "-vf", "scale=1080:1920,setsar=1", f"short{i+1}.mp4"
         ], check=True)
 
