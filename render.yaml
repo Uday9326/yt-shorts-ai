@@ -7,5 +7,5 @@ services:
     envVars:
       - key: PORT
         value: 8000
-- key: OPENAI_API_KEY
+      - key: OPENAI_API_KEY
         sync: false
