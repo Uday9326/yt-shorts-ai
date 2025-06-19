@@ -1,11 +1,11 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import pytube, subprocess, os
-from faster_whisper import WhisperModel
 import openai
+import whisper
 
 app = FastAPI()
-whisper = WhisperModel("small")
+model = whisper.load_model("base")
 
 class Request(BaseModel):
     youtube_url: str
@@ -21,20 +21,25 @@ async def gen(req: Request):
     stream = yt.streams.filter(progressive=True, file_extension="mp4").order_by("resolution").desc().first()
     stream.download("video.mp4")
 
-    segments, _ = whisper.transcribe("video.mp4")
-    transcript = " ".join(seg.text for seg in segments)
-    prompt = f"Give me start,end seconds for a {req.length}s highlight"
-    resp = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role":"user","content":prompt+"\n"+transcript}])
+    result = model.transcribe("video.mp4")
+    transcript = result["text"]
+
+    prompt = f"Give me start,end seconds for a {req.length}s highlight from this transcript:"
+    resp = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt + "\n" + transcript}]
+    )
+
     start, end = map(int, resp.choices[0].message.content.strip().split(","))
     subprocess.run([
-        "ffmpeg","-y","-i","video.mp4","-ss",str(start),"-t",str(end-start),
-        "-vf","scale=1080:1920,setsar=1","short.mp4"
+        "ffmpeg", "-y", "-i", "video.mp4", "-ss", str(start), "-t", str(end-start),
+        "-vf", "scale=1080:1920,setsar=1", "short.mp4"
     ], check=True)
     return {"download": "/download"}
 
 @app.get("/download")
 async def download():
     if not os.path.exists("short.mp4"):
-        raise HTTPException(404,"Not ready")
+        raise HTTPException(404, "Not ready")
     from fastapi.responses import FileResponse
     return FileResponse("short.mp4", media_type="video/mp4", filename="short.mp4")
