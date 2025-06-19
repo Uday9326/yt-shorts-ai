@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+pytube
+faster-whisper
+openai
